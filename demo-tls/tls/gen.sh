@@ -116,13 +116,15 @@ openssl pkcs12 \
 #    -alias "root" \
 #    -file ca/root-ca.crt \
 #    -storepass ${SERVERS_KEYSTORE_PASSWORD} \
-#    -keystore "certs/${SERVERS_NAME}/keystore/${SERVERS_NAME}.truststore.p12" # && \
+#    -storetype "PKCS12" \
+#    -keystore "certs/${SERVERS_NAME}/keystore/${SERVERS_NAME}.truststore.p12" &&
 keytool \
     -importcert \
     -noprompt \
     -alias "tls" \
     -file ca/tls-ca.crt \
     -storepass ${SERVERS_KEYSTORE_PASSWORD} \
+    -storetype "PKCS12" \
     -keystore "certs/${SERVERS_NAME}/keystore/${SERVERS_NAME}.truststore.p12" || exit
 
 mkdir -p "certs/${CLIENT_NAME}"
@@ -156,10 +158,11 @@ openssl pkcs12 \
     -out "certs/${CLIENT_NAME}/${CLIENT_NAME}.p12" || exit
 
 # Import client certificate into server keystore 
-#keytool \
-#    -importcert \
-#    -noprompt \
-#    -alias "client" \
-#    -file "certs/${CLIENT_NAME}/${CLIENT_NAME}.crt" \
-#    -storepass ${SERVERS_KEYSTORE_PASSWORD} \
-#    -keystore "certs/${SERVERS_NAME}/keystore/${SERVERS_NAME}.truststore.p12" || exit
+keytool \
+    -importcert \
+    -noprompt \
+    -alias "client" \
+    -file "certs/${CLIENT_NAME}/${CLIENT_NAME}.crt" \
+    -storepass ${SERVERS_KEYSTORE_PASSWORD} \
+    -storetype "PKCS12" \
+    -keystore "certs/${SERVERS_NAME}/keystore/${SERVERS_NAME}.truststore.p12" || exit

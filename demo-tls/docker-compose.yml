@@ -1,0 +1,59 @@
+version: "3.7"
+services:
+
+  servers:
+    build: ./servers
+    image: danijelradakovic/servers:1.1.0
+    container_name: servers
+    restart: on-failure
+    networks:
+      - demo-tls
+    ports:
+      - 8080:8080
+    environment:
+      DATABASE_USERNAME: sa
+      DATABASE_PASSWORD: zgadija
+      DATABASE_DOMAIN: mysql
+      DATABASE_SCHEMA: servers
+      KEYSTORE: /etc/keystore/servers.keystore.p12
+      KEYSTORE_PASSWORD: password
+      KEYSTORE_ALIAS: servers
+      TRUSTSTORE: /etc/keystore/servers.truststore.p12
+      TRUSTSTORE_PASSWORD: password
+      RMQ_HOST: rabbitmq-broker
+    volumes:
+      - ./tls/certs/servers/keystore:/etc/keystore
+    depends_on: 
+      - mysql
+      - rabbitmq-broker
+  
+  mysql:
+    image: mysql:8.0.19
+    container_name: mysql
+    restart: always
+    networks:
+      - demo-tls
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: sa
+      MYSQL_PASSWORD: zgadija
+      MYSQL_DATABASE: servers
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  rabbitmq-broker:
+    image: rabbitmq:management-alpine
+    container_name: rabbitmq-broker
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - demo-tls
+
+volumes:
+  mysql-data:
+
+networks:
+  demo-tls:
+    name: demo-tls
+    driver: bridge

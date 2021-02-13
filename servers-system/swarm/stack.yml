@@ -1,10 +1,8 @@
-version: "3.7"
+version: "3.8"
 services:
 
   servers:
     image: danijelradakovic/servers:1.0.0
-    container_name: servers
-    restart: on-failure
     networks:
       - demo
     ports:
@@ -15,14 +13,19 @@ services:
       DATABASE_DOMAIN: mysql
       DATABASE_SCHEMA: servers
       RMQ_HOST: rabbitmq-broker
-    depends_on: 
+    depends_on:
       - mysql
       - rabbitmq-broker
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
 
   logan:
     image: danijelradakovic/logan:1.0.0
-    container_name: logan
-    restart: on-failure
     networks:
       - demo
     ports:
@@ -34,13 +37,20 @@ services:
       - logs:/var/log
     depends_on:
       - rabbitmq-broker
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
 
   mysql:
     image: mysql:8.0.19
-    container_name: mysql
-    restart: always
     networks:
       - demo
+    ports:
+      - 3306:3306
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_USER: sa
@@ -48,15 +58,28 @@ services:
       MYSQL_DATABASE: servers
     volumes:
       - mysql-data:/var/lib/mysql
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
 
   rabbitmq-broker:
     image: rabbitmq:management-alpine
-    container_name: rabbitmq-broker
     ports:
       - 5672:5672
       - 15672:15672
     networks:
       - demo
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 2
+        delay: 10s
+      restart_policy:
+        condition: on-failure
 
 volumes:
   mysql-data:
@@ -65,4 +88,3 @@ volumes:
 networks:
   demo:
     name: demo
-    driver: bridge

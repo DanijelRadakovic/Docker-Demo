@@ -12,11 +12,6 @@ To setup an infrastructure for dev environment run the following command:
 docker-compose --env-file ../config/.env.dev up --build
 ```
 
-To setup an infrastructure for test environment run the fllowing command:
-```shell
-docker-compose --env-file config/.env.test -f docker-compose.yml -f docker-compose.test.yml up --build
-```
-
 To destroy an infrastructure for test environment run the fllowing command:
 ```shell
 docker-compose --env-file config/.env.test -f docker-compose.yml -f docker-compose.test.yml up --build

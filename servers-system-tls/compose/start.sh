@@ -1,31 +1,30 @@
 #! /bin/bash
 
-BASE_DIR=$(pwd)
+BASE_DIR="$(pwd)/.."
 TLS_DIR=${BASE_DIR}/tls
-DOCKER_COMPOSE_TEMPLATE=${BASE_DIR}/docker-compose-template.yml
-DOCKER_COMPOSE=${BASE_DIR}/docker-compose.yml
 
-KEY_SIZE=${2:-4096}
 
-SERVERS_NAME=${3:-servers}
-SERVERS_ALIAS=${4:-servers}
-SERVERS_KEYSTORE_PASSWORD=${5:-password}
+KEY_SIZE=${3:-4096}
 
-REPORT_NAME=${6:-report}
-REPORT_ALIAS=${7:-report}
-REPORT_KEYSTORE_PASSWORD=${8:-password}
+SERVERS_NAME=${4:-servers}
+SERVERS_ALIAS=${5:-servers}
+SERVERS_KEYSTORE_PASSWORD=${6:-password}
 
-CLIENT_NAME=${9:-client}
-CLIENT_ALIAS=${10:-client}
-CLIENT_KEYSTORE_PASSWORD=${11:-password}
+REPORT_NAME=${7:-report}
+REPORT_ALIAS=${8:-report}
+REPORT_KEYSTORE_PASSWORD=${9:-password}
 
-LOGAN_NAME=${12:-logan}
-LOGAN_ALIAS=${13:-logan}
-LOGAN_KEYSTORE_PASSWORD=${14:-password}
+CLIENT_NAME=${10:-client}
+CLIENT_ALIAS=${11:-client}
+CLIENT_KEYSTORE_PASSWORD=${12:-password}
 
-RMQ_NAME=${15:-rabbitmq}
+LOGAN_NAME=${13:-logan}
+LOGAN_ALIAS=${14:-logan}
+LOGAN_KEYSTORE_PASSWORD=${15:-password}
 
-function generateDockerCompose() {
+RMQ_NAME=${16:-rabbitmq}
+
+function generateEnvironmentFile() {
   # sed on MacOSX does not support -i flag with a null extension. We will use
   # 't' for our back-up's extension and delete it at the end of the function
   ARCH=$(uname -s | grep Darwin)
@@ -36,7 +35,7 @@ function generateDockerCompose() {
   fi
 
   # Copy the template to the file that will be modified to add certificates
-  cp "${DOCKER_COMPOSE_TEMPLATE}" "${DOCKER_COMPOSE}" || exit
+  cp "${ENVIROMENT_TEMPLATE}" "${ENVIROMENT_FILE}" || exit
 
   # The next steps will replace the template's contents with the
   # actual values of the certificates and private key files
@@ -51,10 +50,10 @@ function generateDockerCompose() {
       -e "s/LOGAN_ALIAS/${LOGAN_ALIAS}/g" \
       -e "s/LOGAN_KEYSTORE_PASSWORD/${LOGAN_KEYSTORE_PASSWORD}/g" \
       -e "s/RMQ_NAME/${RMQ_NAME}/g" \
-      "${DOCKER_COMPOSE}"
+      "${ENVIROMENT_FILE}"
 
   if [[ "$ARCH" == "Darwin" ]]; then
-    rm "${DOCKER_COMPOSE}t"
+    rm "${ENVIROMENT_FILE}t"
   fi
 }
 
@@ -77,9 +76,34 @@ function generateCertificates() {
        "${RMQ_NAME}"
 }
 
-if [ "${1}" == '-g' ]; then
+if [[ "${1}" == '-g' ]]; then
+  if [[ "${2}" == 'dev' || "${2}" == 'test' || "${2}" == 'prod' ]]; then
+    STAGE=${2}
+  else
+    STAGE='dev'
+  fi
+  ENVIROMENT_TEMPLATE=${BASE_DIR}/compose/templates/.env.${STAGE}
+  ENVIROMENT_FILE=${BASE_DIR}/compose/config/.env.${STAGE}
   generateCertificates
-  generateDockerCompose
+  generateEnvironmentFile
+elif [[ "${1}" == 'dev' || "${1}" == 'test' || "${1}" == 'prod' ]]; then
+  STAGE=${1}
+  ENVIROMENT_FILE=${BASE_DIR}/compose/config/.env.${STAGE}
+else
+  STAGE='dev'
+  ENVIROMENT_FILE=${BASE_DIR}/compose/config/.env.${STAGE}
 fi
 
-docker-compose up --build
+
+
+if [[ "${STAGE}" == 'dev' ]]; then
+  docker-compose \
+    --env-file ${ENVIROMENT_FILE} \
+    up
+elif [[ "${STAGE}" == 'test' || "${STAGE}" == 'prod' ]]; then
+  docker-compose \
+    --env-file ${ENVIROMENT_FILE} \
+    -f docker-compose.yml \
+    -f docker-compose.${STAGE}.yml \
+    up
+fi

@@ -1,0 +1,118 @@
+version: "3.8"
+services:
+  servers:
+    image: danijelradakovic/servers:${VERSION:-1.1.0}-${STAGE:-dev}
+    container_name: servers
+    restart: on-failure
+    networks:
+      - backend
+      - database
+    ports:
+      - 8080:8080
+    environment:
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_DOMAIN: ${DATABASE_DOMAIN}
+      DATABASE_SCHEMA: ${DATABASE_SCHEMA}
+      KEYSTORE: ${KEYSTORE_SERVERS}
+      KEYSTORE_PASSWORD: ${KEYSTORE_PASSWORD_SERVERS}
+      KEYSTORE_ALIAS: ${KEYSTORE_ALIAS_SERVERS}
+      TRUSTSTORE: ${TRUSTSTORE_SERVERS}
+      TRUSTSTORE_PASSWORD: ${TRUSTSTORE_PASSWORD_SERVERS}
+      RMQ_HOST: ${MESSAGE_BROKER}
+      RMQ_PORT: ${RMQ_PORT}
+    volumes:
+      - ${KEYSTORE_PATH_SERVERS}:/etc/keystore
+    depends_on: 
+      - database
+      - message-broker
+  
+  report:
+    image: danijelradakovic/report:1.1.0
+    container_name: report
+    restart: on-failure
+    networks:
+      - backend
+    ports:
+      - 8081:8080
+    environment:
+      DOMAIN: ${SERVERS_DOMAIN}
+      PORT: 8080
+      KEYSTORE: ${KEYSTORE_REPORT}
+      KEYSTORE_PASSWORD: ${KEYSTORE_PASSWORD_REPORT}
+      KEYSTORE_ALIAS: ${KEYSTORE_ALIAS_REPORT}
+      TRUSTSTORE: ${TRUSTSTORE_REPORT}
+      TRUSTSTORE_PASSWORD: ${TRUSTSTORE_PASSWORD_REPORT}
+      RMQ_HOST: ${MESSAGE_BROKER}
+      RMQ_PORT: ${RMQ_PORT}
+    volumes:
+      - ${KEYSTORE_PATH_REPORT}:/etc/keystore
+    depends_on:
+      - message-broker
+
+  logan:
+    image: danijelradakovic/logan:1.1.0
+    container_name: logan
+    restart: on-failure
+    networks:
+      - backend
+    ports:
+      - 8082:8080
+    environment:
+      LOG_STORAGE: ${LOG_STORAGE}
+      KEYSTORE: ${KEYSTORE_LOGAN}
+      KEYSTORE_PASSWORD: ${KEYSTORE_PASSWORD_LOGAN}
+      KEYSTORE_ALIAS: ${KEYSTORE_ALIAS_LOGAN}
+      TRUSTSTORE: ${TRUSTSTORE_LOGAN}
+      TRUSTSTORE_PASSWORD: ${TRUSTSTORE_PASSWORD_LOGAN}
+      RMQ_HOST: ${MESSAGE_BROKER}
+      RMQ_PORT: ${RMQ_PORT}
+    volumes:
+      - logs:${LOG_STORAGE_DIR}
+      - ${KEYSTORE_PATH_LOGAN}:/etc/keystore
+    depends_on:
+      - message-broker
+
+  database:
+    image: mysql:${MYSQL_VERSION:-8.0.19}
+    container_name: mysql
+    restart: always
+    networks:
+      - database
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - database-data:/var/lib/mysql
+
+  message-broker:
+    image: rabbitmq:management-alpine
+    container_name: rabbitmq-broker
+    ports:
+      - 15671:15671
+    networks:
+      - backend
+    environment:
+      RABBITMQ_SSL_CACERTFILE: ${RABBITMQ_SSL_CACERTFILE}
+      RABBITMQ_SSL_CERTFILE: ${RABBITMQ_SSL_CERTFILE}
+      RABBITMQ_SSL_FAIL_IF_NO_PEER_CERT: ${RABBITMQ_SSL_FAIL_IF_NO_PEER_CERT}
+      RABBITMQ_SSL_KEYFILE: ${RABBITMQ_SSL_KEYFILE}
+      RABBITMQ_SSL_VERIFY: ${RABBITMQ_SSL_VERIFY}
+    volumes:
+      - ${RABBITMQ_KEYSTORE_PATH}:/etc/rabbitmq/cert
+
+volumes:
+  database-data:
+    name: server-database
+  logs:
+    name: logan-logs
+
+networks:
+  backend:
+    name: backend
+    driver: bridge
+  database:
+    name: database
+    driver: bridge
